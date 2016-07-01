@@ -17,7 +17,7 @@ function createDatabaseTable($data) {
 
     if ($result = $mysqli->query($query)) {
         //table exists
-        $i = 1;
+        return true;
     }
     else {
         //need to create the table
@@ -35,7 +35,7 @@ function createDatabaseTable($data) {
         $matt = $mysqli->query($query);
     }
 
-    return $data;
+    return true;
 }
 
 

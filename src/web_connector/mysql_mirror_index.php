@@ -52,11 +52,11 @@ define('QB_PRIORITY_INVENTORYSITE', 6);
 define('QB_PRIORITY_ITEMSITES', 5);
 define('QB_PRIORITY_PURCHASEORDER', 9);
 define('QB_PRIORITY_ITEM', 3);
-define('QB_PRIORITY_CUSTOMER', 2);
-define('QB_PRIORITY_SALESORDER', 8);
+define('QB_PRIORITY_CUSTOMER', 11);
+define('QB_PRIORITY_SALESORDER', 10);
 define('QB_PRIORITY_INVOICE', 0);
 
-define('QB_QUICKBOOKS_MAX_RETURNED', 10);
+define('QB_QUICKBOOKS_MAX_RETURNED', 400);
 define('QB_QUICKBOOKS_CONFIG_LAST', 'last');
 define('QB_QUICKBOOKS_CONFIG_CURR', 'curr');
 define('QB_QUICKBOOKS_MAILTO', 'keith@consolibyte.com');
@@ -73,7 +73,7 @@ define('QB_QUICKBOOKS_MAILTO', 'keith@consolibyte.com');
 $map = array(
 	QUICKBOOKS_IMPORT_SALESRECEIPT => array( '_quickbooks_salesreceipt_import_request', '_quickbooks_salesreceipt_import_response' ),
 	QUICKBOOKS_IMPORT_PURCHASEORDER => array( '_quickbooks_purchaseorder_import_request', '_quickbooks_purchaseorder_import_response' ),
-//	QUICKBOOKS_IMPORT_INVOICE => array( '_quickbooks_invoice_import_request', '_quickbooks_invoice_import_response' ),
+	QUICKBOOKS_IMPORT_INVOICE => array( '_quickbooks_invoice_import_request', '_quickbooks_invoice_import_response' ),
 	QUICKBOOKS_IMPORT_CUSTOMER => array( '_quickbooks_customer_import_request', '_quickbooks_customer_import_response' ),
 	QUICKBOOKS_IMPORT_SALESORDER => array( '_quickbooks_salesorder_import_request', '_quickbooks_salesorder_import_response' ),
 	QUICKBOOKS_IMPORT_ITEM => array( '_quickbooks_item_import_request', '_quickbooks_item_import_response' ),
@@ -91,6 +91,8 @@ require_once './_quickbooks_purchaseorder_import.php';
 require_once './_quickbooks_salesorder_import.php';
 require_once './_quickbooks_inventory_site_import.php';
 require_once './_quickbooks_inventory_adjustment_import.php';
+require_once './_quickbooks_response_parser.php';
+require_once './_quickbooks_database_builder.php';
 
 
 // Error handlers

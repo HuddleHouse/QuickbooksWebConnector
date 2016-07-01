@@ -46,69 +46,12 @@ function _quickbooks_inventory_adjustment_import_request($requestID, $user, $act
  */
 function _quickbooks_inventory_adjustment_import_response($requestID, $user, $action, $ID, $extra, &$err, $last_action_time, $last_actionident_time, $xml, $idents)
 {
-    $mysqli = new mysqli("localhost", "quick", "quick", "quick");
     if (!empty($idents['iteratorRemainingCount']))
     {
         // Queue up another request
-
         $Queue = QuickBooks_WebConnector_Queue_Singleton::getInstance();
         $Queue->enqueue(QUICKBOOKS_IMPORT_INVOICE, null, QB_PRIORITY_INVOICE, array( 'iteratorID' => $idents['iteratorID'] ));
     }
 
-    // This piece of the response from QuickBooks is now stored in $xml. You
-    //	can process the qbXML response in $xml in any way you like. Save it to
-    //	a file, stuff it in a database, parse it and stuff the records in a
-    //	database, etc. etc. etc.
-    //
-    // The following example shows how to use the built-in XML parser to parse
-    //	the response and stuff it into a database.
-
-    // Import all of the records
-    $errnum = 0;
-    $errmsg = '';
-    $Parser = new QuickBooks_XML_Parser($xml);
-    if ($Doc = $Parser->parse($errnum, $errmsg))
-    {
-        $Root = $Doc->getRoot();
-        $List = $Root->getChildAt('QBXML/QBXMLMsgsRs/InventoryAdjustmentQueryRs');
-
-        foreach ($List->children() as $adjustment)
-        {
-            $name = "InventoryAdjustmentRet";
-            $arr = array(
-                'TxnID' => $adjustment->getChildDataAt('InventoryAdjustmentRet TxnID'),
-                'time_created' => $adjustment->getChildDataAt('InventoryAdjustmentRet TimeCreated'),
-                'time_modified' => $adjustment->getChildDataAt('InventoryAdjustmentRet TimeModified'),
-                'EditSequence' => $adjustment->getChildDataAt('InventoryAdjustmentRet EditSequence'),
-                'TxnNumber' => $adjustment->getChildDataAt('InventoryAdjustmentRet TxnNumber'),
-                'AccountListID' => $adjustment->getChildDataAt('InventoryAdjustmentRet AccountRef ListID'),
-                'AccountFullName' => $adjustment->getChildDataAt('InventoryAdjustmentRet AccountRef FullName'),
-                'InventorySiteListID' => $adjustment->getChildDataAt('InventoryAdjustmentRet InventorySiteRef ListID'),
-                'InventorySiteFullName' => $adjustment->getChildDataAt('InventoryAdjustmentRet InventorySiteRef FullName'),
-                'TxnDate' => $adjustment->getChildDataAt('InventoryAdjustmentRet TxnDate'),
-                'RefNumber' => $adjustment->getChildDataAt('InventoryAdjustmentRet RefNumber'),
-                'Memo' => $adjustment->getChildDataAt('InventoryAdjustmentRet Memo'),
-            );
-
-
-            foreach ($arr as $key => $value)
-            {
-                $arr[$key] = $mysqli->real_escape_string($value);
-            }
-
-            // Store the invoices in MySQL
-            $mysqli->query("
-				REPLACE INTO 
-					qb_inventory_adjustment
-				(
-					" . implode(", ", array_keys($arr)) . "
-				) VALUES (
-					'" . implode("', '", array_values($arr)) . "'
-				)") or die(trigger_error($mysqli->error));
-
-
-        }
-    }
-
-    return true;
+    return parseResponse($xml, 'InventoryAdjustmentQueryQuery');
 }

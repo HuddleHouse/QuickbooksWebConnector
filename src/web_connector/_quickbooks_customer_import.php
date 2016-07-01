@@ -48,69 +48,12 @@ function _quickbooks_customer_import_request($requestID, $user, $action, $ID, $e
  */
 function _quickbooks_customer_import_response($requestID, $user, $action, $ID, $extra, &$err, $last_action_time, $last_actionident_time, $xml, $idents)
 {
-    $mysqli = new mysqli("localhost", "quick", "quick", "quick");
     if (!empty($idents['iteratorRemainingCount']))
     {
         // Queue up another request
-
         $Queue = QuickBooks_WebConnector_Queue_Singleton::getInstance();
         $Queue->enqueue(QUICKBOOKS_IMPORT_CUSTOMER, null, QB_PRIORITY_CUSTOMER, array( 'iteratorID' => $idents['iteratorID'] ));
     }
 
-    // This piece of the response from QuickBooks is now stored in $xml. You
-    //	can process the qbXML response in $xml in any way you like. Save it to
-    //	a file, stuff it in a database, parse it and stuff the records in a
-    //	database, etc. etc. etc.
-    //
-    // The following example shows how to use the built-in XML parser to parse
-    //	the response and stuff it into a database.
-
-    // Import all of the records
-    $errnum = 0;
-    $errmsg = '';
-    $Parser = new QuickBooks_XML_Parser($xml);
-    if ($Doc = $Parser->parse($errnum, $errmsg))
-    {
-        $Root = $Doc->getRoot();
-        $List = $Root->getChildAt('QBXML/QBXMLMsgsRs/CustomerQueryRs');
-
-        foreach ($List->children() as $Customer)
-        {
-            $arr = array(
-                'list_id' => $Customer->getChildDataAt('CustomerRet ListID'),
-                'time_created' => $Customer->getChildDataAt('CustomerRet time_created'),
-                'time_modified' => $Customer->getChildDataAt('CustomerRet time_modified'),
-                'Name' => $Customer->getChildDataAt('CustomerRet Name'),
-                'FullName' => $Customer->getChildDataAt('CustomerRet FullName'),
-                'FirstName' => $Customer->getChildDataAt('CustomerRet FirstName'),
-                'MiddleName' => $Customer->getChildDataAt('CustomerRet MiddleName'),
-                'LastName' => $Customer->getChildDataAt('CustomerRet LastName'),
-                'Contact' => $Customer->getChildDataAt('CustomerRet Contact'),
-                'ShipAddress_Addr1' => $Customer->getChildDataAt('CustomerRet ShipAddress Addr1'),
-                'ShipAddress_Addr2' => $Customer->getChildDataAt('CustomerRet ShipAddress Addr2'),
-                'ShipAddress_City' => $Customer->getChildDataAt('CustomerRet ShipAddress City'),
-                'ShipAddress_State' => $Customer->getChildDataAt('CustomerRet ShipAddress State'),
-                'ShipAddress_PostalCode' => $Customer->getChildDataAt('CustomerRet ShipAddress PostalCode'),
-            );
-
-            QuickBooks_Utilities::log(QB_QUICKBOOKS_DSN, 'Importing customer ' . $arr['FullName'] . ': ' . print_r($arr, true));
-
-            foreach ($arr as $key => $value)
-            {
-                $arr[$key] = $mysqli->real_escape_string($value);
-            }
-
-            // Store the invoices in MySQL
-            $mysqli->query("
-				REPLACE INTO
-					qb_customer
-				(
-					" . implode(", ", array_keys($arr)) . "
-				) VALUES (
-					'" . implode("', '", array_values($arr)) . "'
-				)") or die(trigger_error($mysqli->error));
-        }
-    }
-
-    return true;
+    return parseResponse($xml, 'CustomerQuery');
 }
