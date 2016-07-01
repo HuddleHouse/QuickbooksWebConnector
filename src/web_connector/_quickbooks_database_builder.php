@@ -6,13 +6,13 @@
  * Time: 12:27 PM
  */
 
-$tableNames = array();
+
 
 function createDatabaseTable($data) {
-    $matt = $data->asJSON();
+//    $matt = $data->asJSON();
     $arr = array();
     $mysqli = new mysqli("localhost", "quick", "quick", "quick");
-
+    $usedTableNames = array();
     $query = "select * from ". $data->name();
 
     if ($result = $mysqli->query($query)) {
@@ -21,25 +21,18 @@ function createDatabaseTable($data) {
     }
     else {
         //need to create the table
-
         $element = findElementWithMostChildren($data);
         $arr = buildArrayForSchema($element);
-
-        /**
-        ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-         */
-
 
         $query = "CREATE TABLE IF NOT EXISTS ". $data->name()." (";
 
         foreach($arr as $item) {
-            $query .= generateSqlLine($item);
+            $query .= generateSqlLine($item, $usedTableNames);
         }
 
         $query = substr($query, 0, -2);
         $query .= ") ENGINE=MyISAM DEFAULT CHARSET=latin1;";
         $matt = $mysqli->query($query);
-
     }
 
     return $data;
@@ -52,9 +45,9 @@ function createDatabaseTable($data) {
  * @param $data['data']
  * @return string
  */
-function generateSqlLine($data) {
+function generateSqlLine($data, &$usedTableNames) {
     $line = $data['name'] . " ";
-    $type = gettype($data['data']);
+    $type = gettype_fromstring($data['data']);
 
     if($type == 'boolean') {
         $line .= "varchar(6), ";
@@ -75,20 +68,28 @@ function generateSqlLine($data) {
         $line .= "datetime ,";
     }
 
+    if(isset($usedTableNames[$data['name']])) {
+        $line = '';
+    }
+    else {
+        $usedTableNames[$data['name']] = $data['name'];
+    }
+
     if($data['numKids'] > 0) {
-        $line .= parseChildren($data);
+        $newLine = parseChildren($data, $usedTableNames);
+        $line .= $newLine;
     }
 
     return $line;
 }
 
-function parseChildren($data) {
+function parseChildren($data, &$usedTableNames) {
     $children = $data['children'];
     $line = '';
 
     foreach($children as $child) {
         $newElement = buildArrayForSchemaFromElement($child, $data['name']);
-        $newLine .= generateSqlLine($newElement);
+        $line .= generateSqlLine($newElement, $usedTableNames);
     }
 
     return $line;
@@ -169,4 +170,34 @@ function buildArrayForSchemaFromElement($data, $parentsName = null) {
         'children' => $data->children()
     );
     return $arrData;
+}
+
+function gettype_fromstring($string){
+    //  (c) José Moreira - Microdual (www.microdual.com)
+    return gettype(getcorrectvariable($string));
+}
+function getcorrectvariable($string){
+    //  (c) José Moreira - Microdual (www.microdual.com)
+    //      With the help of Svisstack (http://stackoverflow.com/users/283564/svisstack)
+
+    /* FUNCTION FLOW */
+    // *1. Remove unused spaces
+    // *2. Check if it is empty, if yes, return blank string
+    // *3. Check if it is numeric
+    // *4. If numeric, this may be a integer or double, must compare this values.
+    // *5. If string, try parse to bool.
+    // *6. If not, this is string.
+
+    $string=trim($string);
+    if(empty($string)) return "";
+    if(!preg_match("/[^0-9.]+/",$string)){
+        if(preg_match("/[.]+/",$string)){
+            return (double)$string;
+        }else{
+            return (int)$string;
+        }
+    }
+    if($string=="true") return true;
+    if($string=="false") return false;
+    return (string)$string;
 }
