@@ -46,68 +46,12 @@ function _quickbooks_item_sites_import_request($requestID, $user, $action, $ID, 
  */
 function _quickbooks_item_sites_import_response($requestID, $user, $action, $ID, $extra, &$err, $last_action_time, $last_actionident_time, $xml, $idents)
 {
-    $mysqli = new mysqli("localhost", "quick", "quick", "quick");
     if (!empty($idents['iteratorRemainingCount']))
     {
         // Queue up another request
-
         $Queue = QuickBooks_WebConnector_Queue_Singleton::getInstance();
-        $Queue->enqueue(QUICKBOOKS_QUERY_ITEMSITES, null, QB_PRIORITY_ITEMSITES, array( 'iteratorID' => $idents['iteratorID'] ));
+        $Queue->enqueue(QUICKBOOKS_IMPORT_ITEMSITES, null, QB_PRIORITY_ITEMSITES, array( 'iteratorID' => $idents['iteratorID'] ));
     }
 
-    // This piece of the response from QuickBooks is now stored in $xml. You
-    //	can process the qbXML response in $xml in any way you like. Save it to
-    //	a file, stuff it in a database, parse it and stuff the records in a
-    //	database, etc. etc. etc.
-    //
-    // The following example shows how to use the built-in XML parser to parse
-    //	the response and stuff it into a database.
-
-    // Import all of the records
-    $errnum = 0;
-    $errmsg = '';
-    $Parser = new QuickBooks_XML_Parser($xml);
-    if ($Doc = $Parser->parse($errnum, $errmsg))
-    {
-        $Root = $Doc->getRoot();
-        $List = $Root->getChildAt('QBXML/QBXMLMsgsRs/ItemSitesQueryRs');
-
-        foreach ($List->children() as $Site)
-        {
-            $arr = array(
-                'ListID' => $Site->getChildDataAt('ItemSitesRet ListID'),
-                'time_created' => $Site->getChildDataAt('ItemSitesRet TimeCreated'),
-                'time_modified' => $Site->getChildDataAt('ItemSitesRet TimeModified'),
-                'EditSequence' => $Site->getChildDataAt('ItemSitesRet EditSequence'),
-                'ItemInventoryListID' => $Site->getChildDataAt('ItemSitesRet ItemInventoryRef ListID'),
-                'ItemInventoryFullName' => $Site->getChildDataAt('ItemSitesRet ItemInventoryRef FullName'),
-                'QuantityOnHand' => $Site->getChildDataAt('ItemSitesRet QuantityOnHand'),
-                'QuantityOnPurchaseOrders' => $Site->getChildDataAt('ItemSitesRet QuantityOnPurchaseOrders'),
-                'QuantityOnSalesOrders' => $Site->getChildDataAt('ItemSitesRet QuantityOnSalesOrders'),
-                'QuantityToBeBuiltByPendingBuildTxns' => $Site->getChildDataAt('ItemSitesRet QuantityToBeBuiltByPendingBuildTxns'),
-                'QuantityRequiredByPendingBuildTxns' => $Site->getChildDataAt('ItemSitesRet QuantityRequiredByPendingBuildTxns'),
-                'QuantityOnPendingTransfers' => $Site->getChildDataAt('ItemSitesRet QuantityOnPendingTransfers'),
-            );
-
-
-            foreach ($arr as $key => $value)
-            {
-                $arr[$key] = $mysqli->real_escape_string($value);
-            }
-
-            // Store the invoices in MySQL
-            $mysqli->query("
-				REPLACE INTO 
-					qb_item_sites
-				(
-					" . implode(", ", array_keys($arr)) . "
-				) VALUES (
-					'" . implode("', '", array_values($arr)) . "'
-				)") or die(trigger_error($mysqli->error));
-
-
-        }
-    }
-
-    return true;
+    return parseResponse($xml, 'ItemSitesQuery');
 }

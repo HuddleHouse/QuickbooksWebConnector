@@ -55,93 +55,12 @@ function _quickbooks_item_import_request($requestID, $user, $action, $ID, $extra
  */
 function _quickbooks_item_import_response($requestID, $user, $action, $ID, $extra, &$err, $last_action_time, $last_actionident_time, $xml, $idents)
 {
-    $mysqli = new mysqli("localhost", "quick", "quick", "quick");
     if (!empty($idents['iteratorRemainingCount']))
     {
         // Queue up another request
-
         $Queue = QuickBooks_WebConnector_Queue_Singleton::getInstance();
         $Queue->enqueue(QUICKBOOKS_IMPORT_ITEM, null, QB_PRIORITY_ITEM, array( 'iteratorID' => $idents['iteratorID'] ));
     }
 
-    // Import all of the records
-    $errnum = 0;
-    $errmsg = '';
-    $Parser = new QuickBooks_XML_Parser($xml);
-    if ($Doc = $Parser->parse($errnum, $errmsg))
-    {
-        $Root = $Doc->getRoot();
-        $List = $Root->getChildAt('QBXML/QBXMLMsgsRs/ItemQueryRs');
-
-        foreach ($List->children() as $Item)
-        {
-            $type = substr(substr($Item->name(), 0, -3), 4);
-            $ret = $Item->name();
-
-            $arr = array(
-                'list_id' => $Item->getChildDataAt($ret . ' ListID'),
-                'time_created' => $Item->getChildDataAt($ret . ' time_created'),
-                'time_modified' => $Item->getChildDataAt($ret . ' time_modified'),
-                'Name' => $Item->getChildDataAt($ret . ' Name'),
-                'FullName' => $Item->getChildDataAt($ret . ' FullName'),
-                'Type' => $type,
-                'Parent_list_id' => $Item->getChildDataAt($ret . ' ParentRef ListID'),
-                'Parent_FullName' => $Item->getChildDataAt($ret . ' ParentRef FullName'),
-                'ManufacturerPartNumber' => $Item->getChildDataAt($ret . ' ManufacturerPartNumber'),
-                'SalesTaxCode_list_id' => $Item->getChildDataAt($ret . ' SalesTaxCodeRef ListID'),
-                'SalesTaxCode_FullName' => $Item->getChildDataAt($ret . ' SalesTaxCodeRef FullName'),
-                'BuildPoint' => $Item->getChildDataAt($ret . ' BuildPoint'),
-                'ReorderPoint' => $Item->getChildDataAt($ret . ' ReorderPoint'),
-                'QuantityOnHand' => $Item->getChildDataAt($ret . ' QuantityOnHand'),
-                'AverageCost' => $Item->getChildDataAt($ret . ' AverageCost'),
-                'QuantityOnOrder' => $Item->getChildDataAt($ret . ' QuantityOnOrder'),
-                'QuantityOnSalesOrder' => $Item->getChildDataAt($ret . ' QuantityOnSalesOrder'),
-                'TaxRate' => $Item->getChildDataAt($ret . ' TaxRate'),
-            );
-
-            $look_for = array(
-                'SalesPrice' => array( 'SalesOrPurchase Price', 'SalesAndPurchase SalesPrice', 'SalesPrice' ),
-                'SalesDesc' => array( 'SalesOrPurchase Desc', 'SalesAndPurchase SalesDesc', 'SalesDesc' ),
-                'PurchaseCost' => array( 'SalesOrPurchase Price', 'SalesAndPurchase PurchaseCost', 'PurchaseCost' ),
-                'PurchaseDesc' => array( 'SalesOrPurchase Desc', 'SalesAndPurchase PurchaseDesc', 'PurchaseDesc' ),
-                'PrefVendor_list_id' => array( 'SalesAndPurchase PrefVendorRef ListID', 'PrefVendorRef ListID' ),
-                'PrefVendor_FullName' => array( 'SalesAndPurchase PrefVendorRef FullName', 'PrefVendorRef FullName' ),
-            );
-
-            foreach ($look_for as $field => $look_here)
-            {
-                if (!empty($arr[$field]))
-                {
-                    break;
-                }
-
-                foreach ($look_here as $look)
-                {
-                    $arr[$field] = $Item->getChildDataAt($ret . ' ' . $look);
-                }
-            }
-
-            QuickBooks_Utilities::log(QB_QUICKBOOKS_DSN, 'Importing ' . $type . ' Item ' . $arr['FullName'] . ': ' . print_r($arr, true));
-
-            foreach ($arr as $key => $value)
-            {
-                $arr[$key] = $mysqli->real_escape_string($value);
-            }
-
-            //print_r(array_keys($arr));
-            //trigger_error(print_r(array_keys($arr), true));
-
-            // Store the customers in MySQL
-            $mysqli->query("
-				insert INTO
-					qb_item
-				(
-					" . implode(", ", array_keys($arr)) . "
-				) VALUES (
-					'" . implode("', '", array_values($arr)) . "'
-				)") or die(trigger_error($mysqli->error));
-        }
-    }
-
-    return true;
+    return parseResponse($xml, 'ItemQuery');
 }

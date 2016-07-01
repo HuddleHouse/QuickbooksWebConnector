@@ -56,7 +56,7 @@ define('QB_PRIORITY_CUSTOMER', 11);
 define('QB_PRIORITY_SALESORDER', 10);
 define('QB_PRIORITY_INVOICE', 0);
 
-define('QB_QUICKBOOKS_MAX_RETURNED', 400);
+define('QB_QUICKBOOKS_MAX_RETURNED', 100);
 define('QB_QUICKBOOKS_CONFIG_LAST', 'last');
 define('QB_QUICKBOOKS_CONFIG_CURR', 'curr');
 define('QB_QUICKBOOKS_MAILTO', 'keith@consolibyte.com');

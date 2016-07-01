@@ -51,104 +51,12 @@ function _quickbooks_invoice_import_request($requestID, $user, $action, $ID, $ex
  */
 function _quickbooks_invoice_import_response($requestID, $user, $action, $ID, $extra, &$err, $last_action_time, $last_actionident_time, $xml, $idents)
 {
-    $mysqli = new mysqli("localhost", "quick", "quick", "quick");
     if (!empty($idents['iteratorRemainingCount']))
     {
         // Queue up another request
-
         $Queue = QuickBooks_WebConnector_Queue_Singleton::getInstance();
         $Queue->enqueue(QUICKBOOKS_IMPORT_INVOICE, null, QB_PRIORITY_INVOICE, array( 'iteratorID' => $idents['iteratorID'] ));
     }
 
-    // This piece of the response from QuickBooks is now stored in $xml. You
-    //	can process the qbXML response in $xml in any way you like. Save it to
-    //	a file, stuff it in a database, parse it and stuff the records in a
-    //	database, etc. etc. etc.
-    //
-    // The following example shows how to use the built-in XML parser to parse
-    //	the response and stuff it into a database.
-
-    // Import all of the records
-    $errnum = 0;
-    $errmsg = '';
-    $Parser = new QuickBooks_XML_Parser($xml);
-    if ($Doc = $Parser->parse($errnum, $errmsg))
-    {
-        $Root = $Doc->getRoot();
-        $List = $Root->getChildAt('QBXML/QBXMLMsgsRs/InvoiceQueryRs');
-
-        foreach ($List->children() as $Invoice)
-        {
-            $arr = array(
-                'TxnID' => $Invoice->getChildDataAt('InvoiceRet TxnID'),
-                'time_created' => $Invoice->getChildDataAt('InvoiceRet time_created'),
-                'time_modified' => $Invoice->getChildDataAt('InvoiceRet time_modified'),
-                'RefNumber' => $Invoice->getChildDataAt('InvoiceRet RefNumber'),
-                'Customer_list_id' => $Invoice->getChildDataAt('InvoiceRet CustomerRef ListID'),
-                'Customer_FullName' => $Invoice->getChildDataAt('InvoiceRet CustomerRef FullName'),
-                'ShipAddress_Addr1' => $Invoice->getChildDataAt('InvoiceRet ShipAddress Addr1'),
-                'ShipAddress_Addr2' => $Invoice->getChildDataAt('InvoiceRet ShipAddress Addr2'),
-                'ShipAddress_City' => $Invoice->getChildDataAt('InvoiceRet ShipAddress City'),
-                'ShipAddress_State' => $Invoice->getChildDataAt('InvoiceRet ShipAddress State'),
-                'ShipAddress_PostalCode' => $Invoice->getChildDataAt('InvoiceRet ShipAddress PostalCode'),
-                'BalanceRemaining' => $Invoice->getChildDataAt('InvoiceRet BalanceRemaining'),
-            );
-
-            QuickBooks_Utilities::log(QB_QUICKBOOKS_DSN, 'Importing invoice #' . $arr['RefNumber'] . ': ' . print_r($arr, true));
-
-            foreach ($arr as $key => $value)
-            {
-                $arr[$key] = $mysqli->real_escape_string($value);
-            }
-
-            // Store the invoices in MySQL
-            $mysqli->query("
-				REPLACE INTO
-					qb_invoice
-				(
-					" . implode(", ", array_keys($arr)) . "
-				) VALUES (
-					'" . implode("', '", array_values($arr)) . "'
-				)") or die(trigger_error($mysqli->error));
-
-            // Remove any old line items
-            $mysqli->query("DELETE FROM qb_invoice_lineitem WHERE TxnID = '" . $mysqli->real_escape_string($arr['TxnID']) . "' ") or die(trigger_error($mysqli->error));
-
-            // Process the line items
-            foreach ($Invoice->children() as $Child)
-            {
-                if ($Child->name() == 'InvoiceLineRet')
-                {
-                    $InvoiceLine = $Child;
-
-                    $lineitem = array(
-                        'TxnID' => $arr['TxnID'],
-                        'TxnLineID' => $InvoiceLine->getChildDataAt('InvoiceLineRet TxnLineID'),
-                        'Item_list_id' => $InvoiceLine->getChildDataAt('InvoiceLineRet ItemRef ListID'),
-                        'Item_FullName' => $InvoiceLine->getChildDataAt('InvoiceLineRet ItemRef FullName'),
-                        'Descrip' => $InvoiceLine->getChildDataAt('InvoiceLineRet Desc'),
-                        'Quantity' => $InvoiceLine->getChildDataAt('InvoiceLineRet Quantity'),
-                        'Rate' => $InvoiceLine->getChildDataAt('InvoiceLineRet Rate'),
-                    );
-
-                    foreach ($lineitem as $key => $value)
-                    {
-                        $lineitem[$key] = $mysqli->real_escape_string($value);
-                    }
-
-                    // Store the lineitems in MySQL
-                    $mysqli->query("
-						INSERT INTO
-							qb_invoice_lineitem
-						(
-							" . implode(", ", array_keys($lineitem)) . "
-						) VALUES (
-							'" . implode("', '", array_values($lineitem)) . "'
-						) ") or die(trigger_error($mysqli->error));
-                }
-            }
-        }
-    }
-
-    return true;
+    return parseResponse($xml, 'InvoiceQuery');
 }

@@ -13,7 +13,7 @@ function createDatabaseTable($data) {
     $arr = array();
     $mysqli = new mysqli("localhost", "quick", "quick", "quick");
     $usedTableNames = array();
-    $query = "select * from ". $data->name();
+    $query = "select * from ". $data->name() ? $data->name() : '';
 
     if ($result = $mysqli->query($query)) {
         //table exists
