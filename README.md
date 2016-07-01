@@ -25,6 +25,5 @@ Almost anything you can do in the QuickBooks GUI, in QuickBooks Online Edition, 
 
 
 -------------------------------------
-###Keith Palmer###
-- Follow me on Twitter for updates: https://twitter.com/keith_palmer_jr
+###Matt Huddleston###
 # QuickbooksWebConnector
